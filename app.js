@@ -7,6 +7,7 @@ const SEASONS = [
   { id:"spring",  fa:"بهار",    en:"Spring", tag:"شکوفه‌ها و صبح‌هایی که تازه دارن شروع می‌شن" },
   { id:"summer",  fa:"تابستان", en:"Summer", tag:"نور طلایی، صدای موج، و شب‌هایی که تموم نمی‌شن" },
   { id:"reserve", fa:"سال دوم", en:"Next year", tag:"کتاب‌هایی که تو سایه، صبور منتظرن" },
+  { id:"history", fa:"تاریخچه", en:"History", tag:"کتاب‌هایی که تموم شدن و برای همیشه مال تو موندن" },
 ];
 const BY = Object.fromEntries(SEASONS.map(s => [s.id, s]));
 const FA_NAME = { autumn:"پاییز", winter:"زمستان", spring:"بهار", summer:"تابستان" };
@@ -31,6 +32,7 @@ function normalizeLib(raw) {
     const o = { t, g: typeof b.g === "string" ? b.g : "", w: WEIGHT[b.w] ? b.w : "متوسط", n: typeof b.n === "string" ? b.n : "" };
     if (b.later) o.later = true;
     if (b.u) o.u = 1;
+    if (b.y) o.y = 1;
     if (season) o.s = SEASON_IDS.includes(b.s) ? b.s : "autumn";
     return o;
   };
@@ -41,8 +43,10 @@ function normalizeLib(raw) {
   }
   if (raw.reserve !== undefined && !Array.isArray(raw.reserve)) errs.push("reserve باید آرایه باشه");
   const reserve = (Array.isArray(raw.reserve) ? raw.reserve : []).map((b, i) => one(b, "reserve #" + (i + 1), true)).filter(Boolean);
+  if (raw.history !== undefined && !Array.isArray(raw.history)) errs.push("history باید آرایه باشه");
+  const history = (Array.isArray(raw.history) ? raw.history : []).map((b, i) => one(b, "history #" + (i + 1), true)).filter(Boolean);
   if (errs.length) { const e = new Error(errs.slice(0, 4).join("\n") + (errs.length > 4 ? "\n… و " + (errs.length - 4) + " مورد دیگه" : "")); e.list = errs; throw e; }
-  const lib = { seasons, reserve };
+  const lib = { seasons, reserve, history };
   if (raw.progress && Array.isArray(raw.progress.read)) lib.progress = { read: raw.progress.read.filter(x => typeof x === "string") };
   return lib;
 }
@@ -54,12 +58,17 @@ try {
 const plan = {};
 for (const s of SEASON_IDS) plan[s] = D.seasons[s];
 const reserve = D.reserve;
+if (!Array.isArray(D.history)) D.history = [];
+const past = D.history;
+const listOf = id => id === "reserve" ? reserve : id === "history" ? past : plan[id];
 
 // reading order: now-autumn, winter, spring, summer, then autumn of next year
-const order = [
-  ...plan.autumn.filter(b => !b.later), ...plan.winter, ...plan.spring, ...plan.summer,
-  ...plan.autumn.filter(b => b.later),
+const orderList = () => [
+  ...SEASON_IDS.flatMap(s => plan[s].filter(b => !b.y && !b.later)),
+  ...plan.autumn.filter(b => b.later && !b.y),
+  ...SEASON_IDS.flatMap(s => plan[s].filter(b => b.y)),
 ];
+const order = orderList();
 const SEASON_OF = new Map();
 for (const s in plan) for (const b of plan[s]) SEASON_OF.set(b.t, s);
 
@@ -92,7 +101,7 @@ function buildTabs() {
   }
 }
 
-function seasonBooks(id) { return id === "reserve" ? reserve : plan[id]; }
+function seasonBooks(id) { return listOf(id); }
 
 function progress(id) {
   const list = seasonBooks(id);
@@ -115,7 +124,7 @@ function cardHTML(b, i, extra = "") {
       <svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.5"/></svg></button>
     <div class="body">
       <div class="title">${esc(b.t)}</div>
-      <div class="meta">${genre}${drops(b.w)}${note}${extra}</div>
+      <div class="meta">${b.y ? '<span class="y2">سال ۲</span>' : ""}${genre}${drops(b.w)}${note}${extra}</div>
     </div>
     <span class="num">${fa(i + 1)}</span>
     <button class="mv" type="button" aria-label="انتقال به فصل دیگه: ${esc(b.t)}">⇄</button>
@@ -126,18 +135,20 @@ function cardHTML(b, i, extra = "") {
 function renderList(id) {
   const el = $("list");
   let html = "", i = 0;
-  if (id === "reserve") {
+  if (id === "reserve" || id === "history") {
     let last = "";
-    reserve.forEach((b, k) => {
+    listOf(id).forEach((b, k) => {
       if (b.s !== last) { html += `<div class="group">${FA_NAME[b.s]}</div>`; last = b.s; }
       html += cardHTML(b, k, b.u ? "" : "");
     });
   } else {
     plan[id].forEach((b, k) => {
+      if (b.y && !plan[id][k - 1]?.y) html += '<div class="ydiv">کتاب‌های سال دوم</div>';
       if (b.later && !plan[id][k - 1]?.later) html += `<div class="divider">پاییز سال بعد · بعد از تابستون</div>`;
       html += cardHTML(b, k);
     });
   }
+  if (id === "history" && !past.length) html = '<div class="empty">هنوز خالیه. وقتی همه‌ی کتاب‌های یه فصل خونده بشه، کتاب‌هاش میان اینجا و کتاب‌های سال دوم اون فصل جاشون رو می‌گیرن.</div>';
   el.innerHTML = html;
   el.classList.remove("swap"); void el.offsetWidth;
 }
@@ -151,7 +162,7 @@ function renderRing(id) {
 }
 
 function renderTotals() {
-  const total = order.length, done = order.filter(b => read.has(b.t)).length;
+  const total = order.length + past.length, done = order.filter(b => read.has(b.t)).length + past.filter(b => read.has(b.t)).length;
   $("total").textContent = `${fa(done)} از ${fa(total)} کتاب`;
   const nxt = order.find(b => !read.has(b.t));
   const btn = $("next");
@@ -181,8 +192,9 @@ function go(id, push = true) {
   if (!BY[id]) id = "autumn";
   const first = current === null;
   current = id;
-  document.body.dataset.season = id;
-  document.querySelector('meta[name="theme-color"]').content = THEME[id];
+  const vis = id === "history" ? "reserve" : id;
+  document.body.dataset.season = vis; document.body.classList.toggle("view-history", id === "history");
+  document.querySelector('meta[name="theme-color"]').content = THEME[vis];
   document.querySelectorAll(".tab").forEach(t => {
     const on = t.dataset.id === id;
     t.setAttribute("aria-selected", on);
@@ -196,10 +208,10 @@ function go(id, push = true) {
   $("list").classList.add("swap");
   renderRing(id);
   renderTotals();
-  Fx.setSeason(id);
+  Fx.setSeason(vis);
   if (push) history.replaceState(null, "", "#" + id);
 }
-const THEME = { autumn:"#4a2224", winter:"#1b2554", spring:"#f9d7e3", summer:"#7fd6dc", reserve:"#1f1747" };
+const THEME = { autumn:"#4a2224", winter:"#1b2554", spring:"#f9d7e3", summer:"#7fd6dc", reserve:"#1f1747", history:"#1f1747" };
 
 /* toggle read */
 $("list").addEventListener("click", e => {
@@ -214,6 +226,7 @@ $("list").addEventListener("click", e => {
   if (now) { const r = chk.getBoundingClientRect(); Fx.burst(r.left + r.width / 2, r.top + r.height / 2); }
   renderRing(current === "reserve" ? "reserve" : current);
   renderTotals();
+  if (now) maybeRollover(t);
 });
 
 /* reset (two taps) */
@@ -450,13 +463,13 @@ const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0");
 
 $("export").addEventListener("click", () => {
   const nxt = order.find(b => !read.has(b.t));
-  const allTitles = new Set([...SEASON_IDS.flatMap(s => D.seasons[s]), ...D.reserve].map(b => b.t));
-  const readList = [...order, ...D.reserve].filter(b => read.has(b.t)).map(b => b.t);
+  const allTitles = new Set([...SEASON_IDS.flatMap(s => D.seasons[s]), ...D.reserve, ...D.history].map(b => b.t));
+  const readList = [...order, ...D.reserve, ...D.history].filter(b => read.has(b.t)).map(b => b.t);
   const out = {
     app: "fasl-khani", format: 1, exportedAt: new Date().toISOString(),
-    _about: "Fasl-khani library. seasons.* = this year's plan in reading order (books with later:true are read after summer, in autumn of next year). reserve = backlog (s = season it belongs to). Book: t=title, g=genre, w=weight (سبک/متوسط/سنگین), n=note. progress.read = titles already read, progress.next = where the reader is now. Edit lists freely, keep titles unique, and import the file back.",
+    _about: "Fasl-khani library. seasons.* = this year's plan in reading order (books with later:true are read after summer, in autumn of next year). reserve = backlog (s = season it belongs to). Book: t=title, g=genre, w=weight (سبک/متوسط/سنگین), n=note. progress.read = titles already read, progress.next = where the reader is now. history = finished books of earlier rounds (s = season). y:1 on a season book = a year-2 book that came in after the previous round of that season was fully read. Edit lists freely, keep titles unique, and import the file back.",
     progress: { read: readList, readCount: readList.length, total: allTitles.size, next: nxt ? nxt.t : null, nextSeason: nxt ? SEASON_OF.get(nxt.t) : null },
-    seasons: D.seasons, reserve: D.reserve,
+    seasons: D.seasons, reserve: D.reserve, history: D.history,
   };
   const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -507,12 +520,10 @@ $("defaults").addEventListener("click", e => {
 });
 
 /* ───────── hold & drag to reorder ───────── */
-const rebuildOrder = () => order.splice(0, order.length,
-  ...plan.autumn.filter(b => !b.later), ...plan.winter, ...plan.spring, ...plan.summer,
-  ...plan.autumn.filter(b => b.later));
+const rebuildOrder = () => order.splice(0, order.length, ...orderList());
 const persistLib = () => {
   rebuildOrder();
-  try { localStorage.setItem(LIB_KEY, JSON.stringify({ seasons: D.seasons, reserve: D.reserve })); } catch (e) {}
+  try { localStorage.setItem(LIB_KEY, JSON.stringify({ seasons: D.seasons, reserve: D.reserve, history: D.history })); } catch (e) {}
   changed("lib");
 };
 const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { const n = c.querySelector(".num"); if (n) n.textContent = fa(i + 1); });
@@ -577,7 +588,7 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
     commit();
   }
   function commit() {
-    const id = current, arr = id === "reserve" ? reserve : plan[id];
+    const id = current, arr = listOf(id);
     const cards = [...list.querySelectorAll(".card")], titles = cards.map(c => c.dataset.t);
     if (titles.length !== arr.length) return;
     const by = new Map(arr.map(b => [b.t, b]));
@@ -610,7 +621,7 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
 (() => {
   const toast = $("toast"), btn = $("editBtn");
   let tm = 0, last = null;
-  const arrOf = id => id === "reserve" ? reserve : plan[id];
+  const arrOf = listOf;
   const tidy = () => [...$("list").children].forEach(el => {
     if (el.classList.contains("card")) return;
     const n = el.nextElementSibling;
@@ -627,24 +638,24 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
     const card = d.closest(".card"), t = card.dataset.t, id = current, arr = arrOf(id), k = arr.findIndex(b => b.t === t);
     if (k < 0) return;
     const book = arr.splice(k, 1)[0];
-    if (id !== "reserve") SEASON_OF.delete(t);
+    if (SEASON_IDS.includes(id)) SEASON_OF.delete(t);
     card.remove(); tidy(); renumber(); persistLib(); renderRing(id); renderTotals();
     last = { id, k, book };
     toast.innerHTML = '<span></span><button type="button">برگردون</button>';
     toast.firstChild.textContent = "«" + t + "» حذف شد";
     toast.hidden = false;
-    clearTimeout(tm); tm = setTimeout(() => { toast.hidden = true; last = null; }, 8000);
+    extraUndo = null; clearTimeout(toast._t); toast._t = setTimeout(() => { toast.hidden = true; last = null; }, 8000);
   });
   const note = text => {
     toast.innerHTML = "<span></span>"; toast.firstChild.textContent = text; toast.hidden = false; last = null;
-    clearTimeout(tm); tm = setTimeout(() => { toast.hidden = true; }, 3500);
+    extraUndo = null; clearTimeout(toast._t); toast._t = setTimeout(() => { toast.hidden = true; }, 3500);
   };
   const moveTo = (t, from, to) => {
     const src = arrOf(from), k = src.findIndex(b => b.t === t);
     if (k < 0 || from === to) return;
     const book = src.splice(k, 1)[0];
     if (from === "reserve") delete book.s; else SEASON_OF.delete(t);
-    delete book.later;
+    delete book.later; delete book.y;
     if (to === "reserve") {
       book.s = from;
       let at = reserve.length;
@@ -668,19 +679,76 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
     if (had) return;
     const d = document.createElement("div");
     d.className = "pick";
-    d.innerHTML = SEASONS.filter(x => x.id !== current).map(x => '<button type="button" data-to="' + x.id + '">' + x.fa + '</button>').join("");
+    d.innerHTML = SEASONS.filter(x => x.id !== current && x.id !== "history").map(x => '<button type="button" data-to="' + x.id + '">' + x.fa + '</button>').join("");
     card.appendChild(d);
   });
   toast.addEventListener("click", e => {
-    if (!e.target.closest("button") || !last) return;
+    if (!e.target.closest("button")) return;
+    if (extraUndo) { const f = extraUndo; extraUndo = null; toast.hidden = true; clearTimeout(toast._t); f(); return; }
+    if (!last) return;
     const { id, k, book } = last; last = null; toast.hidden = true; clearTimeout(tm);
     const arr = arrOf(id);
     arr.splice(Math.min(k, arr.length), 0, book);
-    if (id !== "reserve") SEASON_OF.set(book.t, id);
+    if (SEASON_IDS.includes(id)) SEASON_OF.set(book.t, id);
     persistLib();
     if (current === id) { renderList(id); renderRing(id); }
     renderTotals();
   });
+})();
+
+/* ───────── season finished -> year-2 books come in, old ones go to history ───────── */
+let extraUndo = null;
+function fkToast(text, undo) {
+  const toast = $("toast");
+  toast.innerHTML = undo ? '<span></span><button type="button">برگردون</button>' : "<span></span>";
+  toast.firstChild.textContent = text; toast.hidden = false;
+  extraUndo = undo || null;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { toast.hidden = true; extraUndo = null; }, 12000);
+}
+function maybeRollover(title) {
+  const s = SEASON_OF.get(title);
+  if (!s || !SEASON_IDS.includes(s)) return;
+  const cur = plan[s];
+  if (!cur.length || !cur.every(b => read.has(b.t))) return;
+  const incoming = reserve.filter(b => b.s === s);
+  if (!incoming.length) return;
+  const snap = JSON.parse(JSON.stringify({ cur, reserve, past }));
+  for (const b of cur) {
+    SEASON_OF.delete(b.t);
+    const o = { ...b, s }; delete o.later; delete o.y;
+    let at = past.length;
+    for (let i = past.length - 1; i >= 0; i--) if (past[i].s === s) { at = i + 1; break; }
+    past.splice(at, 0, o);
+  }
+  const rest = reserve.filter(b => b.s !== s);
+  reserve.splice(0, reserve.length, ...rest);
+  const fresh = incoming.map(b => { const o = { ...b, y: 1 }; delete o.s; return o; });
+  cur.splice(0, cur.length, ...fresh);
+  fresh.forEach(b => SEASON_OF.set(b.t, s));
+  persistLib();
+  if (current === s) { renderList(s); renderRing(s); }
+  renderTotals();
+  fkToast("«" + FA_NAME[s] + "» تموم شد. " + fa(fresh.length) + " کتاب سال دوم اومد و کتاب‌های خونده‌شده رفتن تاریخچه.", () => {
+    fresh.forEach(b => SEASON_OF.delete(b.t));
+    cur.splice(0, cur.length, ...snap.cur);
+    reserve.splice(0, reserve.length, ...snap.reserve);
+    past.splice(0, past.length, ...snap.past);
+    snap.cur.forEach(b => SEASON_OF.set(b.t, s));
+    persistLib();
+    if (current === s || current === "reserve" || current === "history") { renderList(current); renderRing(current); }
+    renderTotals();
+  });
+}
+
+/* old saved libraries: the legacy "next fall" books inside autumn move to the year-2 tab */
+(function migrateLater() {
+  const L = plan.autumn.filter(b => b.later);
+  if (!L.length) return;
+  plan.autumn.splice(0, plan.autumn.length, ...plan.autumn.filter(b => !b.later));
+  const moved = L.map(b => { SEASON_OF.delete(b.t); const o = { ...b, s: "autumn" }; delete o.later; return o; });
+  reserve.splice(0, 0, ...moved);
+  rebuildOrder();
+  persistLib();
 })();
 
 /* hooks for sync.js */

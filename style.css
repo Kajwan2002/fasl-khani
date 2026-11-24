@@ -250,3 +250,8 @@ body.editing .editbtn{background:var(--accent);color:var(--accent-ink);border-co
 .toast[hidden]{display:none}
 .toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .toast button{flex:none;padding:6px 12px;border-radius:99px;border:0;background:#f2a65a;color:#2b1608;font-weight:700;font-size:.8rem;cursor:pointer}
+.ydiv{display:flex;align-items:center;gap:10px;margin:14px 4px 6px;color:var(--ink2);font-size:.72rem;letter-spacing:.02em}
+.ydiv::before,.ydiv::after{content:"";height:1px;flex:1;background:var(--line)}
+.y2{font-size:.66rem;padding:1px 7px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:600}
+.empty{padding:34px 18px;text-align:center;color:var(--ink2);line-height:2;font-size:.9rem}
+body.view-history .card .mv{display:none!important}
