@@ -67,7 +67,14 @@ for (const s in plan) for (const b of plan[s]) SEASON_OF.set(b.t, s);
 const KEY = "fasl-khani:read:v1";
 let read = new Set();
 try { read = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...read])); } catch (e) {} };
+const META_KEY = "fasl-khani:meta:v1";
+/* mark local data as changed (timestamp for cloud merge) and tell sync.js */
+const changed = what => {
+  try { const m = JSON.parse(localStorage.getItem(META_KEY) || "{}"); m[what + "At"] = Date.now(); localStorage.setItem(META_KEY, JSON.stringify(m)); } catch (e) {}
+  window.dispatchEvent(new CustomEvent("fk:change", { detail: { what } }));
+};
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...read])); } catch (e) {} changed("read"); };
+const afterSync = () => Promise.resolve(window.fkSync && window.fkSync.flush()).catch(() => {}).then(() => location.reload());
 
 let current = null;
 const $ = id => document.getElementById(id);
@@ -475,7 +482,9 @@ $("importFile").addEventListener("change", e => {
       localStorage.setItem(LIB_KEY, JSON.stringify(lib));
       if (lib.progress) localStorage.setItem(KEY, JSON.stringify(lib.progress.read));
     } catch (err) { msg("ذخیره تو مرورگر نشد.", true); return; }
-    location.reload();
+    changed("lib"); if (lib.progress) changed("read");
+    msg("در حال همگام‌سازی…");
+    afterSync();
   };
   rd.readAsText(f);
 });
@@ -491,8 +500,12 @@ $("defaults").addEventListener("click", e => {
   }
   clearTimeout(armLib);
   try { localStorage.removeItem(LIB_KEY); } catch (err) {}
-  location.reload();
+  changed("lib");
+  afterSync();
 });
+
+/* hooks for sync.js */
+window.fkApp = { applyRead(list) { read = new Set(list); renderList(current); renderRing(current); renderTotals(); } };
 
 /* ───────── boot ───────── */
 buildScenes();

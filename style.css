@@ -222,3 +222,12 @@ body[data-season=spring] :is(.hero .fa,.hero .tag,.top),body[data-season=summer]
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0ms!important;transition-duration:.01ms!important}
 }
+.sync{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;max-width:340px;padding:14px 12px;margin-bottom:8px;border:1px solid var(--line);border-radius:18px;background:var(--card)}
+.sync [hidden]{display:none!important}
+.sync .iomsg{min-height:0}
+.sync .st{font-weight:600}
+.sync #syncBtn,.sync #syncOut{color:var(--ink)}
+.sync details{width:100%}
+.sync summary{cursor:pointer;color:var(--ink2);padding:4px}
+.sync input{width:100%;margin:6px 0 0;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:var(--pill);color:var(--ink);font:inherit;font-size:16px}
+.sync .io{margin-top:8px}

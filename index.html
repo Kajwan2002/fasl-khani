@@ -57,6 +57,18 @@
   <main id="list" class="list" role="tabpanel"></main>
 
   <footer class="foot">
+    <div class="sync" id="sync">
+      <div id="syncStatus" class="iomsg st" role="status">همگام‌سازی خاموشه</div>
+      <button id="syncBtn" type="button">ورود با گوگل</button>
+      <details id="syncMail">
+        <summary>یا با ایمیل و رمز</summary>
+        <input id="syncEmail" type="email" dir="ltr" autocomplete="email" autocapitalize="none" placeholder="email">
+        <input id="syncPass" type="password" dir="ltr" autocomplete="current-password" placeholder="password">
+        <div class="io"><button id="syncLogin" type="button">ورود</button><button id="syncSignup" type="button">ساخت حساب</button></div>
+      </details>
+      <button id="syncOut" type="button" hidden>خروج از همگام‌سازی</button>
+      <div id="syncMsg" class="iomsg" role="status"></div>
+    </div>
     <div class="io">
       <button id="export" type="button">خروجی گرفتن</button>
       <button id="import" type="button">ورودی (فایل جدید)</button>
@@ -71,5 +83,6 @@
 
 <script src="data.js"></script>
 <script src="app.js"></script>
+<script type="module" src="sync.js"></script>
 </body>
 </html>
