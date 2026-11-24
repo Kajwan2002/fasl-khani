@@ -25,6 +25,7 @@
   <div class="bg" data-s="spring"></div>
   <div class="bg" data-s="summer"></div>
   <div class="bg" data-s="reserve"></div>
+  <div class="bg" data-s="audio"></div>
   <div class="stars"></div>
   <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
   <div class="orb"></div>
@@ -56,6 +57,21 @@
   <button class="next" id="next" type="button"></button>
 
   <main id="list" class="list" role="tabpanel"></main>
+
+  <div class="addwrap">
+    <button id="addBtn" class="addbtn" type="button">＋ افزودن کتاب</button>
+    <form id="addForm" class="addform" hidden autocomplete="off">
+      <input id="addTitle" type="text" maxlength="140" placeholder="اسم کتاب" enterkeyhint="done">
+      <input id="addGenre" type="text" maxlength="60" placeholder="ژانر (اختیاری)">
+      <input id="addNote" type="text" maxlength="80" placeholder="یادداشت (اختیاری)">
+      <div class="addrow">
+        <select id="addWeight" aria-label="سنگینی"><option>سبک</option><option selected>متوسط</option><option>سنگین</option></select>
+        <select id="addSeason" aria-label="فصل" hidden><option value="autumn">پاییز</option><option value="winter">زمستان</option><option value="spring">بهار</option><option value="summer">تابستان</option></select>
+      </div>
+      <div class="addrow"><button id="addOk" type="submit">اضافه کن</button><button id="addCancel" type="button">بی‌خیال</button></div>
+      <div id="addMsg" class="addmsg" role="status"></div>
+    </form>
+  </div>
 
   <footer class="foot">
     <div class="sync" id="sync">

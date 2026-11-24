@@ -255,3 +255,40 @@ body.editing .editbtn{background:var(--accent);color:var(--accent-ink);border-co
 .y2{font-size:.66rem;padding:1px 7px;border-radius:99px;background:var(--accent);color:var(--accent-ink);font-weight:600}
 .empty{padding:34px 18px;text-align:center;color:var(--ink2);line-height:2;font-size:.9rem}
 body.view-history .card .mv{display:none!important}
+body[data-season=audio]{
+  --ink:#e8fff9; --ink2:rgba(222,250,243,.88); --accent:#ff7a6b; --accent-ink:#2a0d0b;
+  --card:rgba(8,32,38,.86); --card-hover:rgba(12,44,52,.93); --line:rgba(120,230,210,.22); --pill:rgba(8,32,38,.74);
+}
+body[data-season=audio] .bg[data-s=audio]{opacity:1}
+.bg[data-s=audio]{background:
+  radial-gradient(70% 50% at 50% 100%,rgba(255,122,107,.32),transparent 70%),
+  radial-gradient(60% 40% at 15% 12%,rgba(61,224,196,.22),transparent 70%),
+  linear-gradient(180deg,#050f14 0%,#0a2a33 45%,#0f4a52 82%,#17686a 100%)}
+body[data-season=audio] .b1{background:#0fa58f}body[data-season=audio] .b2{background:#ff6b5c;opacity:.26}body[data-season=audio] .b3{background:#1b6fb0}
+body[data-season=audio] .orb{--s:min(32vmin,220px);--x:78%;--y:15%;
+  background:radial-gradient(circle,#ff7a6b 0 13%,#0b0c10 14% 17%,transparent 18%),repeating-radial-gradient(circle,#0c0d12 0 3px,#1c1f28 3px 5px);
+  box-shadow:0 0 80px 22px rgba(255,122,107,.26);animation:spin 20s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+body[data-season=audio] .scene[data-s=audio]{opacity:1}
+.eq{transform-box:fill-box;transform-origin:50% 100%;animation:eq 1.6s ease-in-out infinite alternate}
+@keyframes eq{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
+body:not([data-season=audio]) .eq{animation-play-state:paused}
+@media (prefers-reduced-motion:reduce){.eq,body[data-season=audio] .orb{animation:none}}
+body[data-season=audio] .iomsg.err{color:#ff9a8a}
+body[data-season=audio] :is(.hero .fa,.hero .tag,.top){text-shadow:0 1px 3px rgba(4,12,14,.4),0 2px 22px rgba(4,12,14,.55)}
+body.view-audio .card .mv{display:none!important}
+body.view-history .addwrap{display:none}
+.addwrap{margin-top:18px;display:flex;flex-direction:column;align-items:center}
+.addbtn{padding:10px 20px;border-radius:99px;border:1px dashed var(--line);background:var(--pill);color:var(--ink);font-size:.88rem}
+.addbtn:hover{border-style:solid;border-color:var(--accent)}
+.addform{width:100%;display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;border:1px solid var(--line);background:var(--card)}
+.addform[hidden]{display:none}
+.addform input,.addform select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--pill);color:var(--ink);font:inherit;font-size:16px}
+.addform select[hidden]{display:none}
+.addrow{display:flex;gap:8px}
+.addrow>*{flex:1}
+.addrow button{padding:10px 14px;border-radius:99px;border:1px solid var(--line);background:var(--pill);color:var(--ink);font-size:.86rem}
+.addrow button[type=submit]{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:700}
+.addmsg{min-height:1.2em;font-size:.8rem;color:#ff9a8a}
+body[data-season=spring] .addmsg,body[data-season=summer] .addmsg{color:#c0392b}
+@media (max-width:520px){body[data-season=audio] .orb{--x:80%;--y:13%}}
