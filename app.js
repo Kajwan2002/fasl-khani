@@ -7,8 +7,8 @@ const SEASONS = [
   { id:"spring",  fa:"بهار",    en:"Spring", tag:"شکوفه‌ها و صبح‌هایی که تازه دارن شروع می‌شن" },
   { id:"summer",  fa:"تابستان", en:"Summer", tag:"نور طلایی، صدای موج، و شب‌هایی که تموم نمی‌شن" },
   { id:"reserve", fa:"سال دوم", en:"Next year", tag:"کتاب‌هایی که تو سایه، صبور منتظرن" },
-  { id:"history", fa:"تاریخچه", en:"History", tag:"کتاب‌هایی که تموم شدن و برای همیشه مال تو موندن" },
   { id:"audio", fa:"کتاب صوتی", en:"Audiobooks", tag:"کتاب‌هایی که با گوش می‌خونی: تو راه، تو آشپزخونه، تو تاریکی" },
+  { id:"history", fa:"تاریخچه", en:"History", tag:"کتاب‌هایی که تموم شدن و برای همیشه مال تو موندن" },
 ];
 const BY = Object.fromEntries(SEASONS.map(s => [s.id, s]));
 const FA_NAME = { autumn:"پاییز", winter:"زمستان", spring:"بهار", summer:"تابستان" };
@@ -50,6 +50,7 @@ function normalizeLib(raw) {
   const audio = (Array.isArray(raw.audio) ? raw.audio : []).map((b, i) => one(b, "audio #" + (i + 1), false)).filter(Boolean);
   if (errs.length) { const e = new Error(errs.slice(0, 4).join("\n") + (errs.length > 4 ? "\n… و " + (errs.length - 4) + " مورد دیگه" : "")); e.list = errs; throw e; }
   const lib = { seasons, reserve, history, audio };
+  if (raw.audioSeed) lib.audioSeed = 1;
   if (raw.progress && Array.isArray(raw.progress.read)) lib.progress = { read: raw.progress.read.filter(x => typeof x === "string") };
   return lib;
 }
@@ -65,6 +66,12 @@ if (!Array.isArray(D.history)) D.history = [];
 const past = D.history;
 if (!Array.isArray(D.audio)) D.audio = [];
 const audio = D.audio;
+const AUDIO_PFX = "🎧 ";
+if (!D.audioSeed && Array.isArray(BASE.audio)) {
+  const have = new Set([...SEASON_IDS.flatMap(s => D.seasons[s]), ...D.reserve, ...past, ...audio].map(b => b.t));
+  for (const b of BASE.audio) if (!have.has(b.t)) audio.push({ ...b });
+  D.audioSeed = 1;
+}
 const listOf = id => id === "reserve" ? reserve : id === "history" ? past : id === "audio" ? audio : plan[id];
 
 // reading order: now-autumn, winter, spring, summer, then autumn of next year
@@ -122,14 +129,15 @@ function drops(w) {
 function esc(s) { return s.replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c])); }
 
 function cardHTML(b, i, extra = "") {
-  const genre = b.g ? `<span>${esc(b.g)}</span>` : `<span class="dim">ژانر نامشخص</span>`;
+  const genre = b.g ? `<span>${esc(b.g)}</span>` : current === "audio" ? "" : `<span class="dim">ژانر نامشخص</span>`;
+  const shown = current === "audio" && b.t.startsWith(AUDIO_PFX) ? b.t.slice(AUDIO_PFX.length) : b.t;
   const note = b.n ? `<span class="note">· ${esc(b.n)}</span>` : "";
   return `<article class="card ${read.has(b.t) ? "done" : ""}" data-t="${esc(b.t)}" style="--d:${Math.min(i, 14) * 38}ms">
     <button class="chk" type="button" aria-label="خوندم: ${esc(b.t)}" aria-pressed="${read.has(b.t)}">
       <svg viewBox="0 0 24 24"><path d="M5 12.5l4.6 4.6L19 7.5"/></svg></button>
     <div class="body">
-      <div class="title">${esc(b.t)}</div>
-      <div class="meta">${b.y ? '<span class="y2">سال ۲</span>' : ""}${genre}${current === "audio" ? "" : drops(b.w)}${note}${extra}</div>
+      <div class="title">${esc(shown)}</div>
+      <div class="meta">${b.y ? '<span class="y2">سال ۲</span>' : ""}${genre}${drops(b.w)}${note}${extra}</div>
     </div>
     <span class="num">${fa(i + 1)}</span>
     <button class="mv" type="button" aria-label="انتقال به فصل دیگه: ${esc(b.t)}">⇄</button>
@@ -544,7 +552,7 @@ $("defaults").addEventListener("click", e => {
 const rebuildOrder = () => order.splice(0, order.length, ...orderList());
 const persistLib = () => {
   rebuildOrder();
-  try { localStorage.setItem(LIB_KEY, JSON.stringify({ seasons: D.seasons, reserve: D.reserve, history: D.history, audio: D.audio })); } catch (e) {}
+  try { localStorage.setItem(LIB_KEY, JSON.stringify({ seasons: D.seasons, reserve: D.reserve, history: D.history, audio: D.audio, audioSeed: D.audioSeed ? 1 : 0 })); } catch (e) {}
   changed("lib");
 };
 const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { const n = c.querySelector(".num"); if (n) n.textContent = fa(i + 1); });
@@ -778,19 +786,20 @@ function maybeRollover(title) {
   const show = on => { f.hidden = !on; b.hidden = on; };
   b.addEventListener("click", () => {
     $("addSeason").hidden = current !== "reserve";
-    $("addWeight").hidden = current === "audio";
+    $("addWeight").hidden = false;
     m.textContent = ""; show(true); $("addTitle").focus();
   });
   $("addCancel").addEventListener("click", () => { f.reset(); m.textContent = ""; show(false); });
   f.addEventListener("submit", e => {
     e.preventDefault();
-    const t = $("addTitle").value.trim().replace(/\s+/g, " ");
+    let t = $("addTitle").value.trim().replace(/\s+/g, " ");
     if (!t) { m.textContent = "اسم کتاب رو بنویس."; return; }
+    if (current === "audio" && !t.startsWith(AUDIO_PFX)) t = AUDIO_PFX + t;
     const all = [...SEASON_IDS.flatMap(s => plan[s]), ...reserve, ...past, ...audio];
     if (all.some(x => x.t === t)) { m.textContent = "این کتاب از قبل تو لیسته."; return; }
     const id = current;
     if (id === "history") return;
-    const book = { t, g: $("addGenre").value.trim(), w: id === "audio" ? "متوسط" : $("addWeight").value, n: $("addNote").value.trim() };
+    const book = { t, g: $("addGenre").value.trim(), w: $("addWeight").value, n: $("addNote").value.trim() };
     const arr = listOf(id);
     if (id === "reserve") {
       const s = $("addSeason").value; book.s = s;
