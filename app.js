@@ -520,6 +520,7 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
   const list = $("list"), HOLD = 380, SLOP = 9;
   let st = null;
   const isCard = n => n && n.classList && n.classList.contains("card");
+  const crossable = n => isCard(n) || (n && n.classList && n.classList.contains("divider"));
   const pt = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
   function begin(e, touch) {
     if (st || e.target.closest(".chk, .del, .mv, .pick")) return;
@@ -543,8 +544,8 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
     for (let n = 0; n < 60; n++) {
       const r = c.getBoundingClientRect(), mid = want + r.height / 2;
       const prev = c.previousElementSibling, next = c.nextElementSibling;
-      if (isCard(prev)) { const pr = prev.getBoundingClientRect(); if (mid < pr.top + pr.height / 2) { list.insertBefore(c, prev); continue; } }
-      if (isCard(next)) { const nr = next.getBoundingClientRect(); if (mid > nr.top + nr.height / 2) { list.insertBefore(next, c); continue; } }
+      if (crossable(prev)) { const pr = prev.getBoundingClientRect(); if (mid < pr.top + pr.height / 2) { list.insertBefore(c, prev); continue; } }
+      if (crossable(next)) { const nr = next.getBoundingClientRect(); if (mid > nr.top + nr.height / 2) { list.insertBefore(next, c); continue; } }
       break;
     }
     c.style.transform = "translateY(" + (want - c.getBoundingClientRect().top) + "px)";
@@ -579,11 +580,22 @@ const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { c
     const id = current, arr = id === "reserve" ? reserve : plan[id];
     const cards = [...list.querySelectorAll(".card")], titles = cards.map(c => c.dataset.t);
     if (titles.length !== arr.length) return;
-    if (titles.every((t, i) => t === arr[i].t)) return;
     const by = new Map(arr.map(b => [b.t, b]));
+    let flagged = false;
+    if (id === "autumn") {
+      let after = false;
+      for (const el of list.children) {
+        if (el.classList.contains("divider")) after = true;
+        else if (el.classList.contains("card")) {
+          const b = by.get(el.dataset.t);
+          if (b && !!b.later !== after) { flagged = true; if (after) b.later = true; else delete b.later; }
+        }
+      }
+    }
+    if (!flagged && titles.every((t, i) => t === arr[i].t)) return;
     arr.splice(0, arr.length, ...titles.map(t => by.get(t)));
-    renumber();
     persistLib();
+    if (flagged) { renderList(id); renderRing(id); } else renumber();
     renderTotals();
   }
   list.addEventListener("touchstart", e => begin(e, true), { passive: true });
