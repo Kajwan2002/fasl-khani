@@ -9,24 +9,24 @@
   --sans:"Vazirmatn",system-ui,sans-serif;
 }
 body{
-  --ink:#fff1e0; --ink2:rgba(255,236,214,.68); --accent:#ffb15c; --accent-ink:#3a1a12;
-  --card:rgba(58,22,26,.36); --card-hover:rgba(76,30,32,.46); --line:rgba(255,205,160,.2); --pill:rgba(255,226,196,.16);
+  --ink:#fff1e0; --ink2:rgba(255,240,222,.88); --accent:#ffb15c; --accent-ink:#3a1a12;
+  --card:rgba(46,18,24,.84); --card-hover:rgba(60,24,30,.92); --line:rgba(255,205,160,.22); --pill:rgba(46,18,24,.72);
 }
 body[data-season=winter]{
-  --ink:#eef3ff; --ink2:rgba(224,235,255,.7); --accent:#a9c8ff; --accent-ink:#0f1a42;
-  --card:rgba(16,24,66,.36); --card-hover:rgba(24,34,86,.46); --line:rgba(190,215,255,.22); --pill:rgba(210,226,255,.16);
+  --ink:#eef3ff; --ink2:rgba(232,240,255,.88); --accent:#a9c8ff; --accent-ink:#0f1a42;
+  --card:rgba(14,22,62,.84); --card-hover:rgba(20,30,78,.92); --line:rgba(190,215,255,.24); --pill:rgba(14,22,62,.72);
 }
 body[data-season=spring]{
-  --ink:#4a2c3a; --ink2:rgba(74,44,58,.66); --accent:#e8709b; --accent-ink:#fff;
-  --card:rgba(255,255,255,.46); --card-hover:rgba(255,255,255,.62); --line:rgba(255,255,255,.75); --pill:rgba(255,255,255,.5);
+  --ink:#4a2c3a; --ink2:rgba(74,44,58,.82); --accent:#e8709b; --accent-ink:#fff;
+  --card:rgba(255,255,255,.86); --card-hover:rgba(255,255,255,.94); --line:rgba(255,255,255,.9); --pill:rgba(255,255,255,.78);
 }
 body[data-season=summer]{
-  --ink:#0a3a4a; --ink2:rgba(10,58,74,.68); --accent:#ff7e45; --accent-ink:#fff;
-  --card:rgba(255,255,255,.42); --card-hover:rgba(255,255,255,.58); --line:rgba(255,255,255,.7); --pill:rgba(255,255,255,.45);
+  --ink:#0a3a4a; --ink2:rgba(10,58,74,.84); --accent:#ff7e45; --accent-ink:#fff;
+  --card:rgba(255,255,255,.86); --card-hover:rgba(255,255,255,.94); --line:rgba(255,255,255,.9); --pill:rgba(255,255,255,.78);
 }
 body[data-season=reserve]{
-  --ink:#efe9ff; --ink2:rgba(226,216,255,.66); --accent:#b9a2ff; --accent-ink:#1a1238;
-  --card:rgba(30,22,66,.4); --card-hover:rgba(42,32,88,.5); --line:rgba(190,170,255,.2); --pill:rgba(210,195,255,.14);
+  --ink:#efe9ff; --ink2:rgba(232,224,255,.88); --accent:#b9a2ff; --accent-ink:#1a1238;
+  --card:rgba(24,18,58,.86); --card-hover:rgba(34,26,76,.93); --line:rgba(190,170,255,.22); --pill:rgba(24,18,58,.74);
 }
 
 *{box-sizing:border-box;margin:0}
@@ -206,6 +206,9 @@ body[data-season=reserve] .scene[data-s=reserve]{opacity:1}
 body[data-season=autumn] .iomsg.err,body[data-season=winter] .iomsg.err,body[data-season=reserve] .iomsg.err{color:#ff9a8a}
 .foot button.armed{background:var(--accent);color:var(--accent-ink);border-color:transparent}
 
+body[data-season=autumn] :is(.hero .fa,.hero .tag,.top),body[data-season=winter] :is(.hero .fa,.hero .tag,.top),body[data-season=reserve] :is(.hero .fa,.hero .tag,.top){text-shadow:0 1px 3px rgba(10,4,12,.35),0 2px 22px rgba(10,4,12,.5)}
+body[data-season=spring] :is(.hero .fa,.hero .tag,.top),body[data-season=summer] :is(.hero .fa,.hero .tag,.top){text-shadow:0 1px 14px rgba(255,255,255,.55)}
+.foot{text-shadow:inherit}
 @media (max-width:520px){
   .scenes{height:min(30vh,280px)}
   body[data-season=autumn] .orb{--s:min(44vmin,200px);--x:72%;--y:86%}
