@@ -14,9 +14,45 @@ const WEIGHT = { "سبک":1, "متوسط":2, "سنگین":3 };
 const fa = n => Number(n).toLocaleString("fa-IR");
 
 /* ───────── data ───────── */
-const D = window.BOOKS;
+const BASE = window.BOOKS;
+const LIB_KEY = "fasl-khani:lib:v1";
+const SEASON_IDS = ["autumn","winter","spring","summer"];
+
+/* a library = { seasons:{autumn,winter,spring,summer}, reserve:[...] } (+ optional progress) */
+function normalizeLib(raw) {
+  const errs = [], seen = new Map();
+  if (!raw || typeof raw !== "object") throw new Error("فایل JSON درست نیست.");
+  const rs = raw.seasons || {};
+  const one = (b, where, season) => {
+    if (!b || typeof b.t !== "string" || !b.t.trim()) { errs.push("کتاب بدون عنوان تو " + where); return null; }
+    const t = b.t.trim();
+    if (seen.has(t)) { errs.push("عنوان تکراری: " + t + " (" + seen.get(t) + " و " + where + ")"); return null; }
+    seen.set(t, where);
+    const o = { t, g: typeof b.g === "string" ? b.g : "", w: WEIGHT[b.w] ? b.w : "متوسط", n: typeof b.n === "string" ? b.n : "" };
+    if (b.later) o.later = true;
+    if (b.u) o.u = 1;
+    if (season) o.s = SEASON_IDS.includes(b.s) ? b.s : "autumn";
+    return o;
+  };
+  const seasons = {};
+  for (const id of SEASON_IDS) {
+    if (rs[id] !== undefined && !Array.isArray(rs[id])) errs.push("seasons." + id + " باید آرایه باشه");
+    seasons[id] = (Array.isArray(rs[id]) ? rs[id] : []).map((b, i) => one(b, id + " #" + (i + 1), false)).filter(Boolean);
+  }
+  if (raw.reserve !== undefined && !Array.isArray(raw.reserve)) errs.push("reserve باید آرایه باشه");
+  const reserve = (Array.isArray(raw.reserve) ? raw.reserve : []).map((b, i) => one(b, "reserve #" + (i + 1), true)).filter(Boolean);
+  if (errs.length) { const e = new Error(errs.slice(0, 4).join("\n") + (errs.length > 4 ? "\n… و " + (errs.length - 4) + " مورد دیگه" : "")); e.list = errs; throw e; }
+  const lib = { seasons, reserve };
+  if (raw.progress && Array.isArray(raw.progress.read)) lib.progress = { read: raw.progress.read.filter(x => typeof x === "string") };
+  return lib;
+}
+let D = BASE;
+try {
+  const stored = JSON.parse(localStorage.getItem(LIB_KEY) || "null");
+  if (stored) D = normalizeLib(stored);
+} catch (e) { D = BASE; }
 const plan = {};
-for (const s of ["autumn","winter","spring","summer"]) plan[s] = D.seasons[s];
+for (const s of SEASON_IDS) plan[s] = D.seasons[s];
 const reserve = D.reserve;
 
 // reading order: now-autumn, winter, spring, summer, then autumn of next year
@@ -116,8 +152,8 @@ function renderTotals() {
     btn.onclick = () => focusBook(nxt.t);
   } else {
     btn.hidden = false;
-    btn.innerHTML = `<i></i><span>برنامه‌ی امسال تموم شد. حالا سراغ سال دوم برو.</span>`;
-    btn.onclick = () => go("reserve");
+    btn.innerHTML = `<i></i><span>برنامه‌ی این لیست تموم شد. پایین صفحه خروجی بگیر و لیست جدید بساز.</span>`;
+    btn.onclick = () => $("export").scrollIntoView({ behavior:"smooth", block:"center" });
   }
 }
 
@@ -398,6 +434,65 @@ const Fx = (() => {
   resize();
   return { setSeason, burst };
 })();
+
+/* ───────── export / import ───────── */
+const msg = (t, err) => { const m = $("ioMsg"); m.textContent = t; m.classList.toggle("err", !!err); };
+const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, "0"); return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()); };
+
+$("export").addEventListener("click", () => {
+  const nxt = order.find(b => !read.has(b.t));
+  const allTitles = new Set([...SEASON_IDS.flatMap(s => D.seasons[s]), ...D.reserve].map(b => b.t));
+  const readList = [...order, ...D.reserve].filter(b => read.has(b.t)).map(b => b.t);
+  const out = {
+    app: "fasl-khani", format: 1, exportedAt: new Date().toISOString(),
+    _about: "Fasl-khani library. seasons.* = this year's plan in reading order (books with later:true are read after summer, in autumn of next year). reserve = backlog (s = season it belongs to). Book: t=title, g=genre, w=weight (سبک/متوسط/سنگین), n=note. progress.read = titles already read, progress.next = where the reader is now. Edit lists freely, keep titles unique, and import the file back.",
+    progress: { read: readList, readCount: readList.length, total: allTitles.size, next: nxt ? nxt.t : null, nextSeason: nxt ? SEASON_OF.get(nxt.t) : null },
+    seasons: D.seasons, reserve: D.reserve,
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = "fasl-khani-" + stamp() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  msg("خروجی ذخیره شد. فایل رو بده به Claude تا لیست رو عوض کنه.");
+});
+
+$("import").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onerror = () => msg("فایل خونده نشد.", true);
+  rd.onload = () => {
+    let lib;
+    try { lib = normalizeLib(JSON.parse(rd.result)); }
+    catch (err) { msg(err instanceof SyntaxError ? "این فایل JSON معتبر نیست." : err.message, true); return; }
+    const n = SEASON_IDS.reduce((a, s) => a + lib.seasons[s].length, 0);
+    const keep = lib.progress ? "تیک‌ها هم از فایل میاد." : "تیک‌های فعلی می‌مونن.";
+    if (!window.confirm("لیست جدید: " + n + " کتاب تو فصل‌ها و " + lib.reserve.length + " کتاب تو ذخیره. لیست فعلی جایگزین می‌شه. " + keep + "\nادامه بدم؟")) { msg("وارد نشد."); return; }
+    try {
+      localStorage.setItem(LIB_KEY, JSON.stringify(lib));
+      if (lib.progress) localStorage.setItem(KEY, JSON.stringify(lib.progress.read));
+    } catch (err) { msg("ذخیره تو مرورگر نشد.", true); return; }
+    location.reload();
+  };
+  rd.readAsText(f);
+});
+
+/* back to the built-in list (two taps) */
+let armLib;
+$("defaults").addEventListener("click", e => {
+  const b = e.currentTarget;
+  if (!b.classList.contains("armed")) {
+    b.classList.add("armed"); b.textContent = "مطمئنی؟ دوباره بزن";
+    armLib = setTimeout(() => { b.classList.remove("armed"); b.textContent = "برگشت به لیست اولیه"; }, 3500);
+    return;
+  }
+  clearTimeout(armLib);
+  try { localStorage.removeItem(LIB_KEY); } catch (err) {}
+  location.reload();
+});
 
 /* ───────── boot ───────── */
 buildScenes();
