@@ -142,7 +142,7 @@ function listen() {
 
 /* ───────── auth ───────── */
 function init() {
-  try { app = initializeApp(cfg); auth = getAuth(app); db = getFirestore(app); }
+  try { app = initializeApp(cfg, "fasl-khani");   /* named app: own auth session, separate from any other app on this origin */ auth = getAuth(app); db = getFirestore(app); }
   catch (e) { render("همگام‌سازی در دسترس نیست.", true); return; }
   onAuthStateChanged(auth, u => {
     user = u;
