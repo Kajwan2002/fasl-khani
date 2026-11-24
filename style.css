@@ -293,7 +293,7 @@ body.view-history .addwrap{display:none}
 body[data-season=spring] .addmsg,body[data-season=summer] .addmsg{color:#c0392b}
 @media (max-width:520px){body[data-season=audio] .orb{--x:80%;--y:13%}}
 @media (max-width:520px){
-  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-radius:24px;overflow:visible}
-  .tab{flex:none;padding:9px 2px;font-size:.84rem;text-align:center}
+  .tabs{gap:2px;padding:4px}
+  .tab{padding:9px 3px;font-size:clamp(.6rem,3.1vw,.82rem);text-align:center}
 }
 @media (max-width:700px){body[data-season=audio] .hero .en{font-size:clamp(56px,15.5vw,108px)}}
