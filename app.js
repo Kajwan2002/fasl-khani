@@ -118,6 +118,8 @@ function cardHTML(b, i, extra = "") {
       <div class="meta">${genre}${drops(b.w)}${note}${extra}</div>
     </div>
     <span class="num">${fa(i + 1)}</span>
+    <button class="mv" type="button" aria-label="انتقال به فصل دیگه: ${esc(b.t)}">⇄</button>
+    <button class="del" type="button" aria-label="حذف: ${esc(b.t)}">✕</button>
   </article>`;
 }
 
@@ -503,6 +505,171 @@ $("defaults").addEventListener("click", e => {
   changed("lib");
   afterSync();
 });
+
+/* ───────── hold & drag to reorder ───────── */
+const rebuildOrder = () => order.splice(0, order.length,
+  ...plan.autumn.filter(b => !b.later), ...plan.winter, ...plan.spring, ...plan.summer,
+  ...plan.autumn.filter(b => b.later));
+const persistLib = () => {
+  rebuildOrder();
+  try { localStorage.setItem(LIB_KEY, JSON.stringify({ seasons: D.seasons, reserve: D.reserve })); } catch (e) {}
+  changed("lib");
+};
+const renumber = () => $("list").querySelectorAll(".card").forEach((c, i) => { const n = c.querySelector(".num"); if (n) n.textContent = fa(i + 1); });
+(() => {
+  const list = $("list"), HOLD = 380, SLOP = 9;
+  let st = null;
+  const isCard = n => n && n.classList && n.classList.contains("card");
+  const pt = e => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]) || e;
+  function begin(e, touch) {
+    if (st || e.target.closest(".chk, .del, .mv, .pick")) return;
+    const card = e.target.closest(".card");
+    if (!card || (!touch && e.button !== 0)) return;
+    const p = pt(e);
+    st = { card, x: p.clientX, y: p.clientY, active: false, raf: 0 };
+    st.timer = setTimeout(lift, HOLD);
+  }
+  function lift() {
+    if (!st) return;
+    st.active = true;
+    st.grab = st.y - st.card.getBoundingClientRect().top;
+    st.card.classList.add("lift"); document.body.classList.add("sorting");
+    try { navigator.vibrate && navigator.vibrate(12); } catch (e) {}
+    tick();
+  }
+  function place() {
+    const c = st.card, want = st.y - st.grab;
+    c.style.transform = "none";
+    for (let n = 0; n < 60; n++) {
+      const r = c.getBoundingClientRect(), mid = want + r.height / 2;
+      const prev = c.previousElementSibling, next = c.nextElementSibling;
+      if (isCard(prev)) { const pr = prev.getBoundingClientRect(); if (mid < pr.top + pr.height / 2) { list.insertBefore(c, prev); continue; } }
+      if (isCard(next)) { const nr = next.getBoundingClientRect(); if (mid > nr.top + nr.height / 2) { list.insertBefore(next, c); continue; } }
+      break;
+    }
+    c.style.transform = "translateY(" + (want - c.getBoundingClientRect().top) + "px)";
+  }
+  function tick() {
+    if (!st || !st.active) return;
+    const h = window.innerHeight;
+    try { if (st.y < 90) window.scrollBy(0, -Math.ceil((90 - st.y) / 6)); else if (st.y > h - 90) window.scrollBy(0, Math.ceil((st.y - (h - 90)) / 6)); } catch (e) {}
+    place();
+    st.raf = requestAnimationFrame(tick);
+  }
+  function move(e, touch) {
+    if (!st) return;
+    const p = pt(e);
+    if (!st.active) {
+      if (Math.abs(p.clientX - st.x) > SLOP || Math.abs(p.clientY - st.y) > SLOP) { clearTimeout(st.timer); st = null; }
+      return;
+    }
+    st.y = p.clientY;
+    if (e.cancelable) e.preventDefault();
+  }
+  function end() {
+    if (!st) return;
+    clearTimeout(st.timer);
+    const s = st; st = null;
+    if (!s.active) return;
+    cancelAnimationFrame(s.raf);
+    s.card.style.transform = ""; s.card.classList.remove("lift"); document.body.classList.remove("sorting");
+    commit();
+  }
+  function commit() {
+    const id = current, arr = id === "reserve" ? reserve : plan[id];
+    const cards = [...list.querySelectorAll(".card")], titles = cards.map(c => c.dataset.t);
+    if (titles.length !== arr.length) return;
+    if (titles.every((t, i) => t === arr[i].t)) return;
+    const by = new Map(arr.map(b => [b.t, b]));
+    arr.splice(0, arr.length, ...titles.map(t => by.get(t)));
+    renumber();
+    persistLib();
+    renderTotals();
+  }
+  list.addEventListener("touchstart", e => begin(e, true), { passive: true });
+  list.addEventListener("mousedown", e => begin(e, false));
+  addEventListener("touchmove", e => move(e, true), { passive: false });
+  addEventListener("mousemove", e => move(e, false));
+  addEventListener("touchend", end); addEventListener("touchcancel", end); addEventListener("mouseup", end);
+  list.addEventListener("contextmenu", e => { if (st && st.active) e.preventDefault(); });
+})();
+
+/* ───────── edit mode: delete books (with undo) ───────── */
+(() => {
+  const toast = $("toast"), btn = $("editBtn");
+  let tm = 0, last = null;
+  const arrOf = id => id === "reserve" ? reserve : plan[id];
+  const tidy = () => [...$("list").children].forEach(el => {
+    if (el.classList.contains("card")) return;
+    const n = el.nextElementSibling;
+    if (!n || !n.classList.contains("card")) el.remove();
+  });
+  btn.addEventListener("click", () => {
+    const on = document.body.classList.toggle("editing");
+    btn.textContent = on ? "تمام" : "ویرایش";
+    btn.setAttribute("aria-pressed", on);
+  });
+  $("list").addEventListener("click", e => {
+    const d = e.target.closest(".del");
+    if (!d) return;
+    const card = d.closest(".card"), t = card.dataset.t, id = current, arr = arrOf(id), k = arr.findIndex(b => b.t === t);
+    if (k < 0) return;
+    const book = arr.splice(k, 1)[0];
+    if (id !== "reserve") SEASON_OF.delete(t);
+    card.remove(); tidy(); renumber(); persistLib(); renderRing(id); renderTotals();
+    last = { id, k, book };
+    toast.innerHTML = '<span></span><button type="button">برگردون</button>';
+    toast.firstChild.textContent = "«" + t + "» حذف شد";
+    toast.hidden = false;
+    clearTimeout(tm); tm = setTimeout(() => { toast.hidden = true; last = null; }, 8000);
+  });
+  const note = text => {
+    toast.innerHTML = "<span></span>"; toast.firstChild.textContent = text; toast.hidden = false; last = null;
+    clearTimeout(tm); tm = setTimeout(() => { toast.hidden = true; }, 3500);
+  };
+  const moveTo = (t, from, to) => {
+    const src = arrOf(from), k = src.findIndex(b => b.t === t);
+    if (k < 0 || from === to) return;
+    const book = src.splice(k, 1)[0];
+    if (from === "reserve") delete book.s; else SEASON_OF.delete(t);
+    delete book.later;
+    if (to === "reserve") {
+      book.s = from;
+      let at = reserve.length;
+      for (let i = reserve.length - 1; i >= 0; i--) if (reserve[i].s === from) { at = i + 1; break; }
+      reserve.splice(at, 0, book);
+    } else {
+      const dst = plan[to];
+      if (to === "autumn") { let at = dst.findIndex(b => b.later); if (at < 0) at = dst.length; dst.splice(at, 0, book); }
+      else dst.push(book);
+      SEASON_OF.set(t, to);
+    }
+    persistLib(); renderList(from); renderRing(from); renderTotals();
+    note("«" + t + "» رفت به " + BY[to].fa);
+  };
+  $("list").addEventListener("click", e => {
+    const mv = e.target.closest(".mv"), chip = e.target.closest(".pick button");
+    if (chip) { const card = chip.closest(".card"); moveTo(card.dataset.t, current, chip.dataset.to); return; }
+    if (!mv) return;
+    const card = mv.closest(".card"), had = card.querySelector(".pick");
+    $("list").querySelectorAll(".pick").forEach(x => x.remove());
+    if (had) return;
+    const d = document.createElement("div");
+    d.className = "pick";
+    d.innerHTML = SEASONS.filter(x => x.id !== current).map(x => '<button type="button" data-to="' + x.id + '">' + x.fa + '</button>').join("");
+    card.appendChild(d);
+  });
+  toast.addEventListener("click", e => {
+    if (!e.target.closest("button") || !last) return;
+    const { id, k, book } = last; last = null; toast.hidden = true; clearTimeout(tm);
+    const arr = arrOf(id);
+    arr.splice(Math.min(k, arr.length), 0, book);
+    if (id !== "reserve") SEASON_OF.set(book.t, id);
+    persistLib();
+    if (current === id) { renderList(id); renderRing(id); }
+    renderTotals();
+  });
+})();
 
 /* hooks for sync.js */
 window.fkApp = { applyRead(list) { read = new Set(list); renderList(current); renderRing(current); renderTotals(); } };

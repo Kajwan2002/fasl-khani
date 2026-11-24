@@ -37,6 +37,7 @@
   <header class="top">
     <div class="brand">فصل‌خوانی</div>
     <div class="total" id="total"></div>
+    <button id="editBtn" class="editbtn" type="button" aria-pressed="false">ویرایش</button>
   </header>
 
   <nav class="tabs" id="tabs" role="tablist" aria-label="فصل‌ها"></nav>
@@ -77,8 +78,10 @@
     <div id="ioMsg" class="iomsg" role="status"></div>
     <button id="defaults" type="button">برگشت به لیست اولیه</button>
     <button id="reset" type="button">پاک‌کردن همه‌ی تیک‌ها</button>
+    <span class="tip">نگه‌داشتن روی یه کتاب و کشیدن = جابه‌جایی · «ویرایش» بالا = حذف</span>
     <span>هفته‌ای یک کتاب · ←  → برای عوض‌کردن فصل</span>
   </footer>
+  <div id="toast" class="toast" role="status" hidden></div>
 </div>
 
 <script src="data.js"></script>

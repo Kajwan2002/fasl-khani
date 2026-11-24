@@ -231,3 +231,22 @@ body[data-season=spring] :is(.hero .fa,.hero .tag,.top),body[data-season=summer]
 .sync summary{cursor:pointer;color:var(--ink2);padding:4px}
 .sync input{width:100%;margin:6px 0 0;padding:9px 12px;border-radius:12px;border:1px solid var(--line);background:var(--pill);color:var(--ink);font:inherit;font-size:16px}
 .sync .io{margin-top:8px}
+.card{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+body.sorting{cursor:grabbing}
+.card.lift{position:relative;z-index:30;transition:none!important;animation:none!important;scale:1.03;box-shadow:0 16px 38px rgba(0,0,0,.4)}
+.foot .tip{opacity:.85}
+.card{position:relative}
+.card .del{display:none;position:absolute;inset-inline-end:10px;top:50%;translate:0 -50%;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--pill);color:#d9453a;font-size:.9rem;line-height:1;cursor:pointer}
+.card .mv{display:none;position:absolute;inset-inline-end:52px;top:50%;translate:0 -50%;width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--pill);color:var(--ink);font-size:.95rem;line-height:1;cursor:pointer}
+body.editing .card .del,body.editing .card .mv{display:block}
+body.editing .card{padding-inline-end:100px}
+.card .pick{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;padding-top:8px}
+.card .pick button{padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--pill);color:var(--ink);font-size:.8rem;cursor:pointer}
+body.editing .card .num{visibility:hidden}
+.top{gap:10px}
+.editbtn{margin-inline-start:auto;padding:6px 14px;border-radius:99px;border:1px solid var(--line);background:var(--pill);color:var(--ink);font-size:.8rem;cursor:pointer}
+body.editing .editbtn{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+.toast{position:fixed;z-index:60;left:50%;translate:-50% 0;bottom:calc(16px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:14px;max-width:min(92vw,420px);padding:11px 14px 11px 16px;border-radius:99px;background:rgba(20,18,26,.92);color:#fff;font-size:.85rem;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.toast[hidden]{display:none}
+.toast span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toast button{flex:none;padding:6px 12px;border-radius:99px;border:0;background:#f2a65a;color:#2b1608;font-weight:700;font-size:.8rem;cursor:pointer}
