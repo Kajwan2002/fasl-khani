@@ -292,3 +292,8 @@ body.view-history .addwrap{display:none}
 .addmsg{min-height:1.2em;font-size:.8rem;color:#ff9a8a}
 body[data-season=spring] .addmsg,body[data-season=summer] .addmsg{color:#c0392b}
 @media (max-width:520px){body[data-season=audio] .orb{--x:80%;--y:13%}}
+@media (max-width:520px){
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;border-radius:24px;overflow:visible}
+  .tab{flex:none;padding:9px 2px;font-size:.84rem;text-align:center}
+}
+@media (max-width:700px){body[data-season=audio] .hero .en{font-size:clamp(56px,15.5vw,108px)}}
