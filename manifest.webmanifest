@@ -1,0 +1,32 @@
+{
+  "name": "فصل‌خوانی",
+  "short_name": "فصل‌خوانی",
+  "description": "برنامه‌ی کتاب‌خوانی هفته‌ای یک کتاب",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "lang": "fa",
+  "dir": "rtl",
+  "background_color": "#2a1624",
+  "theme_color": "#4a2224",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
